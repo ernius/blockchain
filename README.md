@@ -22,7 +22,7 @@ stack test
 
 # API endpoints
 
-## broadcast a transaction
+## broadcast a transaction given in JSON format
 
 ```
 curl --header "Content-Type: application/json" --request POST \

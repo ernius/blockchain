@@ -78,7 +78,7 @@ businessLogicSpec = do
         t      <- transaction privKey3 (Transfer pubKey3 [TIn t0Idx  1] [TOut pubKey3 5, TOut pubKey2 5])
         let tIdx = decodeUtf8 $ base16 $ hashTransaction t
         result <- runClientM (broadcastClient t) clientEnv
-        result `shouldBe` (Right $ t)
+        result `shouldBe` (Right $ tIdx)
         t' <- runClientM (getTransactionClient tIdx) clientEnv
         t'     `shouldBe` (Right $ t)
 

@@ -21,7 +21,7 @@ import Transaction
 import Util
 
 type GetTransaction     = Capture "tidx" Text :> Get '[JSON] Transaction
-type Broadcast          = ReqBody '[JSON] Transaction :> PostCreated '[JSON] Transaction
+type Broadcast          = ReqBody '[JSON] Transaction :> PostCreated '[PlainText] Text
 type GetAllTransactions = Get '[JSON] [(ByteString,Transaction)]
 
 type TransactionAPI = "transactions" :> (GetTransaction :<|> Broadcast :<|> GetAllTransactions)
@@ -86,13 +86,14 @@ validate t ts = do
     fail "Invalid transaction"
 
 -- | broadcast endpoint
-broadcast :: Transaction -> AppM Transaction
+broadcast :: Transaction -> AppM Text
 broadcast t =
   -- verify signature
   if verifyTransactionSignature t && checkTransaction t then do
     State{transactions = tsV} <- ask
-    liftIO $ atomically $ readTVar tsV >>= validate t >>= writeTVar tsV . (H.insert (hashTransaction t) t)
-    return t
+    let thash = hashTransaction t
+    liftIO $ atomically $ readTVar tsV >>= validate t >>= writeTVar tsV . (H.insert thash t)
+    return $ decodeUtf8 $ base16 $ hashTransaction t
   else
     lift $ Handler $ throwError $ err400 { errBody = "Invalid transaction"}
 
