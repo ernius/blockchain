@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds, TypeOperators, DeriveGeneric, OverloadedStrings  #-}
--- NoImplicitPrelude
 
 module Web where
 
+import Prelude                     ((!!), fail)
 import Protolude                   hiding (hash, State, ask)
 import Servant                     
 import GHC.Generics                (Generic)
@@ -15,6 +15,7 @@ import Control.Monad.Trans.Reader  (ReaderT, ask, runReaderT, mapReaderT)
 import Network.Wai                 (Application)
 import Network.Wai.Handler.Warp    (run)
 import Crypto.PubKey.ECC.ECDSA     (PublicKey(..), PrivateKey(..))
+import Data.Aeson                  as A
 
 import Transaction
 import Util
@@ -111,6 +112,20 @@ webAppEntry =
   -- run HTTP server
   run 8080 . transaction_app . State
 
+-- | Debugging auxiliar functions
+-- | Mocked example transaction
+exampleTransaction :: IO ()
+exampleTransaction = do
+  let ks = get_priv_keys
+  ts <- get_transactions
+  let pubKey1   = fst $ ks !! 0
+  let (Just t0) = find (\ t -> sender (header t) == pubKey1) $ H.elems ts
+  let t0Idx = hashTransaction t0
+  let (pubKey3, privKey3) = ks !! 2
+  let pubKey2 = fst $ ks !! 1
+  t      <- transaction privKey3 (Transfer pubKey3 [TIn t0Idx  1] [TOut pubKey3 5, TOut pubKey2 5])
+  let tIdx = decodeUtf8 $ base16 $ hashTransaction t
+  putStr $ A.encode $ A.toJSON t
 
 
 

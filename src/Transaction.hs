@@ -113,11 +113,3 @@ getOuts ts ins = [ (!! p)  $ tout $ header $ ts H.! ref   | (TIn ref p) <- ins, 
 -- | consider "0" a special tidx referencing no transaction in a Tin, its Tin's position field is the amount of initial coins
 initial_tidx :: ByteString
 initial_tidx = "0"
-
--- | Mocked example transaction
-exampleTransaction :: IO ()
-exampleTransaction = do
-  let [(pub1, priv1), (pub2, _)] = createKeysDet 1 2
-  t <- transaction priv1 (Transfer pub1 [TIn initial_tidx 20] [TOut pub2 20]) -- 
-  putStr $ A.encode $ A.toJSON t
-
