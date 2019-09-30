@@ -3,6 +3,7 @@
 import           Protolude                 hiding (show)
 
 import qualified Data.HashMap.Strict       as H
+import qualified Data.Serialize            as S
 import           GHC.Generics
 import           Network.HTTP.Client       hiding (Proxy, responseBody)
 import           Network.Wai.Handler.Warp  (run)
@@ -67,7 +68,7 @@ businessLogicSpec = do
         (Left (FailureResponse _ response)) <- runClientM (getTransactionClient tidx) clientEnv
         (responseBody response) `shouldBe` "Transaction not found"
 
-    describe "broadcast = POST /transations" $  do
+    describe "broadcast = POST /transations/broadcast" $  do
       it "should broadcast a transaction and then be accesible" $ \ (ts, ks) -> do
         -- t3 = (t0) pub3 10 -> pub3 5,pub2 5
         let pubKey1   = fst $ ks !! 0
@@ -76,8 +77,9 @@ businessLogicSpec = do
         let (pubKey3, privKey3) = ks !! 2
         let pubKey2 = fst $ ks !! 1
         t      <- transaction privKey3 (Transfer pubKey3 [TIn t0Idx  1] [TOut pubKey3 5, TOut pubKey2 5])
+        let tencoded = decodeUtf8 $ base16 $ S.encode t        
         let tIdx = decodeUtf8 $ base16 $ hashTransaction t
-        result <- runClientM (broadcastClient t) clientEnv
+        result <- runClientM (broadcastClient tencoded) clientEnv
         result `shouldBe` (Right $ tIdx)
         t' <- runClientM (getTransactionClient tIdx) clientEnv
         t'     `shouldBe` (Right $ t)
@@ -90,7 +92,8 @@ businessLogicSpec = do
         let (pubKey3, privKey3) = ks !! 2
         let pubKey2 = fst $ ks !! 1
         t      <- transaction privKey3 (Transfer pubKey3 [TIn t0Idx  1] [TOut pubKey3 5, TOut pubKey2 5])
-        (Left (FailureResponse _ response)) <- runClientM (broadcastClient (t { signature = "bad"})) clientEnv
+        let tencoded = decodeUtf8 $ base16 $ S.encode (t { signature = "bad"})        
+        (Left (FailureResponse _ response)) <- runClientM (broadcastClient tencoded) clientEnv
         (responseBody response) `shouldBe` "Invalid transaction"
 
 spec :: Spec

@@ -15,13 +15,14 @@ import Control.Monad.Trans.Reader  (ReaderT, ask, runReaderT, mapReaderT)
 import Network.Wai                 (Application)
 import Network.Wai.Handler.Warp    (run)
 import Crypto.PubKey.ECC.ECDSA     (PublicKey(..), PrivateKey(..))
+import qualified Data.Serialize    as S
 import Data.Aeson                  as A
 
 import Transaction
 import Util
 
 type GetTransaction     = Capture "tidx" Text :> Get '[JSON] Transaction
-type Broadcast          = ReqBody '[JSON] Transaction :> PostCreated '[PlainText] Text
+type Broadcast          = "broadcast" :> Capture "transaction" Text :> Get '[PlainText] Text
 type GetAllTransactions = Get '[JSON] [(ByteString,Transaction)]
 
 type TransactionAPI = "transactions" :> (GetTransaction :<|> Broadcast :<|> GetAllTransactions)
@@ -86,9 +87,13 @@ validate t ts = do
     fail "Invalid transaction"
 
 -- | broadcast endpoint
-broadcast :: Transaction -> AppM Text
-broadcast t =
-  -- verify signature
+broadcast :: Text -> AppM Text
+broadcast txt = do
+  d <- unbase16T txt
+  t <- case (S.decode d) of
+         Left _  -> lift $ Handler $ throwError $ err400 { errBody = "Invalid transaction"}
+         Right d -> return d
+  -- verify signature         
   if verifyTransactionSignature t && checkTransaction t then do
     State{transactions = tsV} <- ask
     let thash = hashTransaction t
@@ -125,8 +130,19 @@ exampleTransaction = do
   let (pubKey3, privKey3) = ks !! 2
   let pubKey2 = fst $ ks !! 1
   t      <- transaction privKey3 (Transfer pubKey3 [TIn t0Idx  1] [TOut pubKey3 5, TOut pubKey2 5])
-  let tIdx = decodeUtf8 $ base16 $ hashTransaction t
-  putStr $ A.encode $ A.toJSON t
+  putStrLn $ (show t :: Text)
+  putStrLn ("" :: Text)  
+  let tencoded = decodeUtf8 $ base16 $ S.encode t
+  putStrLn tencoded
+  putStrLn ("" :: Text)
+  d <- unbase16T tencoded
+  putStrLn ("" :: Text)  
+  case ((S.decode d) :: Either [Char] Transaction) of
+    Left _  -> putStr ("Invalid transaction" :: Text)
+    Right d -> do
+      if d == t then putStrLn ("Iguales" :: Text) else putStrLn ("Distintos" :: Text)
+      putStrLn (show d :: Text)
+
 
 
 
