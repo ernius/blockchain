@@ -95,9 +95,9 @@ checkTransaction (Transaction (Transfer _ _ out) _) = (sum $ map amountOut out) 
 
 type Transactions = H.HashMap ByteString Transaction
 
--- | Transaction input references checks
-checkTransactionRefExists :: Transactions -> Transaction -> Bool
-checkTransactionRefExists ts (Transaction (Transfer sender ins _) _) = and [ ref `H.member` ts | ref <- map tidx ins ]
+-- | Transaction input references exist
+checkTransactionRefExists :: Transactions -> Transaction -> Bool                                             -- initial_tidx are base transactions
+checkTransactionRefExists ts (Transaction (Transfer sender ins _) _) = and [ ref `H.member` ts | ref <- map tidx ins, ref /= initial_tidx ]
 
 -- | Transaction input references have the same recipient equals to the sender
 checkTransactionRefRecipients :: Transactions -> Transaction -> Bool
@@ -108,7 +108,7 @@ checkTransactionBalance :: Transactions -> Transaction -> Bool
 checkTransactionBalance ts (Transaction (Transfer _ ins out) _) = (sum $ map amountOut $ getOuts ts ins) == (sum $ map amountOut out)
 
 getOuts :: Transactions -> [TIn] -> [TOut]
-getOuts ts ins = [ (!! p)  $ tout $ header $ ts H.! ref   | (TIn ref p) <- ins ]
+getOuts ts ins = [ (!! p)  $ tout $ header $ ts H.! ref   | (TIn ref p) <- ins, ref /= initial_tidx ]
 
 -- | consider "0" a special tidx referencing no transaction in a Tin, its Tin's position field is the amount of initial coins
 initial_tidx :: ByteString
