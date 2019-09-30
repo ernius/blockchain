@@ -7,6 +7,7 @@ import Protolude                   hiding (hash, State, ask)
 import Servant                     
 import GHC.Generics                (Generic)
 import qualified Data.HashMap.Strict as H
+import Control.Concurrent.STM      (STM)
 import Control.Concurrent.STM.TVar (TVar, newTVar, newTVarIO, readTVar, readTVarIO, writeTVar)
 import Control.Monad.IO.Class      (liftIO)
 import Control.Monad.STM           (atomically)
@@ -27,9 +28,7 @@ type TransactionAPI = "transactions" :> (GetTransaction :<|> Broadcast :<|> GetA
 transactionAPI :: Proxy TransactionAPI
 transactionAPI  = Proxy
 
-type Transactions = H.HashMap ByteString Transaction
-type Keys = [(PublicKey,PrivateKey)]
-
+-- | fixed random seed, to make deterministc tests
 random_seed :: Int
 random_seed = 0
 
@@ -55,11 +54,13 @@ data State = State
 
 type AppM = ReaderT State Handler
 
+-- | debuging endpoint
 getAllTransaction :: AppM [(ByteString, Transaction)]
 getAllTransaction = do
   State{transactions = ts} <- ask
   liftIO $ fmap H.toList $ readTVarIO ts
 
+-- | get transaction endpoint
 getTransaction :: Text -> AppM Transaction
 getTransaction tidx = do
   State{transactions = tsV} <- ask
@@ -69,12 +70,27 @@ getTransaction tidx = do
     Just t  -> return t
     Nothing -> lift $ Handler $ throwError $ err400 { errBody = "Transaction not found"}
 
+validations :: [Transactions -> Transaction -> Bool]
+validations = [ checkTransactionRefExists
+              , checkTransactionRefRecipients
+              , checkTransactionBalance
+              ]
+
+-- | runs all validations inside atomically which grants the transactions are not updated during checking
+validate :: Transaction -> Transactions -> STM Transactions
+validate t ts = do
+  if and [f ts t | f <- validations] then
+    return ts
+  else
+    fail "Invalid transaction"
+
+-- | broadcast endpoint
 broadcast :: Transaction -> AppM Transaction
 broadcast t =
   -- verify signature
   if verifyTransactionSignature t && checkTransaction t then do
     State{transactions = tsV} <- ask
-    liftIO $ atomically $ readTVar tsV >>= writeTVar tsV . (H.insert (hashTransaction t) t)
+    liftIO $ atomically $ readTVar tsV >>= validate t >>= writeTVar tsV . (H.insert (hashTransaction t) t)
     return t
   else
     lift $ Handler $ throwError $ err400 { errBody = "Invalid transaction"}

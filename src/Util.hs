@@ -16,6 +16,7 @@ import Crypto.PubKey.ECC.ECDSA (sign, verify, PublicKey(..), PrivateKey(..), pub
 import Crypto.Hash (hashWith, Digest, SHA3_256(..))
 
 type Hash = Digest SHA3_256
+type Keys = [(PublicKey,PrivateKey)]
 
 hash :: ByteString -> Hash
 hash = hashWith SHA3_256

@@ -2,11 +2,13 @@
 
 module Transaction where
 
-import Protolude                    hiding (hash)
-import GHC.Generics                 (Generic)
-import qualified Data.Serialize     as S
-import Data.Aeson                   as A
-import Crypto.PubKey.ECC.ECDSA      (PublicKey(..), PrivateKey(..))
+import Prelude                       ((!!))
+import Protolude                     hiding (hash)
+import GHC.Generics                  (Generic)
+import qualified Data.Serialize      as S
+import Data.Aeson                    as A
+import qualified Data.HashMap.Strict as H
+import Crypto.PubKey.ECC.ECDSA       (PublicKey(..), PrivateKey(..))
 
 import Util
 
@@ -86,10 +88,27 @@ verifyTransactionSignature (Transaction th@(Transfer f _ _) sig) =
     Left _  -> False
     Right d -> verify f d (S.encode th)
 
--- | Basic checkings
-checkTransaction :: Transaction -> Bool
+-- | Basic checks
+checkTransaction  :: Transaction -> Bool
 checkTransaction (Transaction (Transfer _ [] _)  _) = False
 checkTransaction (Transaction (Transfer _ _ out) _) = (sum $ map amountOut out) > 0
+
+type Transactions = H.HashMap ByteString Transaction
+
+-- | Transaction input references checks
+checkTransactionRefExists :: Transactions -> Transaction -> Bool
+checkTransactionRefExists ts (Transaction (Transfer sender ins _) _) = and [ ref `H.member` ts | ref <- map tidx ins ]
+
+-- | Transaction input references have the same recipient equals to the sender
+checkTransactionRefRecipients :: Transactions -> Transaction -> Bool
+checkTransactionRefRecipients ts (Transaction (Transfer sender ins _) _) = and [ sender == recipient | (TOut recipient _) <- getOuts ts ins ]
+
+-- | Transaction inputs sum equals ouputs sum
+checkTransactionBalance :: Transactions -> Transaction -> Bool
+checkTransactionBalance ts (Transaction (Transfer _ ins out) _) = (sum $ map amountOut $ getOuts ts ins) == (sum $ map amountOut out)
+
+getOuts :: Transactions -> [TIn] -> [TOut]
+getOuts ts ins = [ (!! p)  $ tout $ header $ ts H.! ref   | (TIn ref p) <- ins ]
 
 -- | consider "0" a special tidx referencing no transaction in a Tin, its Tin's position field is the amount of initial coins
 initial_tidx :: ByteString
