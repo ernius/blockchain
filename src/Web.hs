@@ -21,11 +21,12 @@ import Data.Aeson                  as A
 import Transaction
 import Util
 
-type GetTransaction     = Capture "tidx" Text :> Get '[JSON] Transaction
+type GetTransactionVerbose  = "verbose" :> Capture "tidx" Text :> Get '[JSON] Transaction
+type GetTransaction     = Capture "tidx" Text :> Get '[PlainText] Text
 type Broadcast          = "broadcast" :> Capture "transaction" Text :> Get '[PlainText] Text
 type GetAllTransactions = Get '[JSON] [(ByteString,Transaction)]
 
-type TransactionAPI = "transactions" :> (GetTransaction :<|> Broadcast :<|> GetAllTransactions)
+type TransactionAPI = "transactions" :> (GetTransactionVerbose :<|> GetTransaction :<|> Broadcast :<|> GetAllTransactions)
 
 transactionAPI :: Proxy TransactionAPI
 transactionAPI  = Proxy
@@ -62,15 +63,26 @@ getAllTransaction = do
   State{transactions = ts} <- ask
   liftIO $ fmap H.toList $ readTVarIO ts
 
--- | get transaction endpoint
-getTransaction :: Text -> AppM Transaction
-getTransaction tidx = do
+-- | get transaction endpoint in JSON format
+getTransactionVerbose :: Text -> AppM Transaction
+getTransactionVerbose tidx = do
   State{transactions = tsV} <- ask
   ts <- liftIO $ readTVarIO tsV
   d  <- unbase16T tidx
   case H.lookup d ts of
     Just t  -> return t
     Nothing -> lift $ Handler $ throwError $ err400 { errBody = "Transaction not found"}
+
+-- | get transaction endpoint in base16 format
+getTransaction :: Text -> AppM Text
+getTransaction tidx = do
+  State{transactions = tsV} <- ask
+  ts <- liftIO $ readTVarIO tsV
+  d  <- unbase16T tidx
+  case H.lookup d ts of
+    Just t  -> return $ decodeUtf8 $ base16 $ S.encode t
+    Nothing -> lift $ Handler $ throwError $ err400 { errBody = "Transaction not found"}
+
 
 validations :: [Transactions -> Transaction -> Bool]
 validations = [ checkTransactionRefExists
@@ -103,7 +115,7 @@ broadcast txt = do
     lift $ Handler $ throwError $ err400 { errBody = "Invalid transaction"}
 
 server :: ServerT TransactionAPI AppM
-server = getTransaction :<|> broadcast :<|> getAllTransaction
+server = getTransactionVerbose :<|> getTransaction :<|> broadcast :<|> getAllTransaction
 
 nt :: State -> AppM a -> Handler a
 nt = flip runReaderT

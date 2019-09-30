@@ -50,22 +50,22 @@ businessLogicSpec = do
   -- `around` will start our Server before the tests and turn it off after
   around withTransactionApp  $ do
     -- create a test client function
-    let getTransactionClient :<|> broadcastClient :<|> getAllTransactionsClient = client transactionAPI
+    let getTransactionVerboseClient :<|> getTransactionClient :<|> broadcastClient :<|> getAllTransactionsClient = client transactionAPI
     -- create a servant-client ClientEnv
     baseUrl <- runIO $ parseBaseUrl $ test_server_url
     manager <- runIO $ newManager defaultManagerSettings
     let clientEnv = mkClientEnv manager baseUrl
     -- testing scenarios start here
-    describe "get transaction = GET /transactions/:tidx" $ do
+    describe "get transaction = GET /transactions/verbose/:tidx" $ do
       it "should get :tidx transaction" $ \ (ts,_) -> do
         let transaction0    =  (!! 0) $ H.elems ts
         let transaction0Idx = decodeUtf8 $ base16 $ hashTransaction transaction0
-        (Right result) <- runClientM (getTransactionClient transaction0Idx) clientEnv
+        (Right result) <- runClientM (getTransactionVerboseClient transaction0Idx) clientEnv
         result `shouldBe` transaction0
 
       it "should fail when :tidx transaction does not exist" $ \ (ts,_) -> do
         let tidx = "111111"
-        (Left (FailureResponse _ response)) <- runClientM (getTransactionClient tidx) clientEnv
+        (Left (FailureResponse _ response)) <- runClientM (getTransactionVerboseClient tidx) clientEnv
         (responseBody response) `shouldBe` "Transaction not found"
 
     describe "broadcast = POST /transations/broadcast" $  do
@@ -81,7 +81,7 @@ businessLogicSpec = do
         let tIdx = decodeUtf8 $ base16 $ hashTransaction t
         result <- runClientM (broadcastClient tencoded) clientEnv
         result `shouldBe` (Right $ tIdx)
-        t' <- runClientM (getTransactionClient tIdx) clientEnv
+        t' <- runClientM (getTransactionVerboseClient tIdx) clientEnv
         t'     `shouldBe` (Right $ t)
 
       it "should fail as signature is invalid" $ \ (ts, ks) -> do
