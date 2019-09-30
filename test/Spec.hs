@@ -91,7 +91,7 @@ businessLogicSpec = do
         let pubKey2 = fst $ ks !! 1
         t      <- transaction privKey3 (Transfer pubKey3 [TIn t0Idx  1] [TOut pubKey3 5, TOut pubKey2 5])
         (Left (FailureResponse _ response)) <- runClientM (broadcastClient (t { signature = "bad"})) clientEnv
-        (responseBody response) `shouldBe` "Invalid signature"
+        (responseBody response) `shouldBe` "Invalid transaction"
 
 spec :: Spec
 spec = do

@@ -72,12 +72,12 @@ getTransaction tidx = do
 broadcast :: Transaction -> AppM Transaction
 broadcast t =
   -- verify signature
-  if verifyTransactionSignature t then do
+  if verifyTransactionSignature t && checkTransaction t then do
     State{transactions = tsV} <- ask
     liftIO $ atomically $ readTVar tsV >>= writeTVar tsV . (H.insert (hashTransaction t) t)
     return t
   else
-    lift $ Handler $ throwError $ err400 { errBody = "Invalid signature"}
+    lift $ Handler $ throwError $ err400 { errBody = "Invalid transaction"}
 
 server :: ServerT TransactionAPI AppM
 server = getTransaction :<|> broadcast :<|> getAllTransaction

@@ -46,11 +46,11 @@ curl --header "Content-Type: application/json" --request GET \
 
 # Consensus Rules 
 
-- [] No send more money that owns
 - [Done] Check signature
 - [] Amount of money sent is grater than 0
 - [] All transaction references (txid) exists
-- [] Transaction inputs and outputs are not empty
+- [Done] Transaction inputs and outputs are not empty
+- [] All transaction input references have the same recipient and is equal to the sender of the transaction
 - [] All transaction input references are not referenced as input by any previous broadcasted transaction (double spending)
 - [] Transaction Inputs sum equals output sum
 

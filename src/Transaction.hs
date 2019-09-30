@@ -86,6 +86,11 @@ verifyTransactionSignature (Transaction th@(Transfer f _ _) sig) =
     Left _  -> False
     Right d -> verify f d (S.encode th)
 
+-- | Basic checkings
+checkTransaction :: Transaction -> Bool
+checkTransaction (Transaction (Transfer _ [] _)  _) = False
+checkTransaction (Transaction (Transfer _ _ out) _) = (sum $ map amountOut out) > 0
+
 -- | consider "0" a special tidx referencing no transaction in a Tin, its Tin's position field is the amount of initial coins
 initial_tidx :: ByteString
 initial_tidx = "0"
