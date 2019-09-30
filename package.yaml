@@ -1,0 +1,73 @@
+name:                trailchain
+version:             0.1.0.0
+github:              "githubuser/trailchain"
+license:             BSD3
+author:              "Ernesto Copello"
+maintainer:          "ecopello@gmail.com"
+copyright:           "2019 Ernesto"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/trailchain#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- servant-server
+- servant-client
+- aeson
+- wai
+- warp
+- stm
+- transformers
+- http-client
+- protolude
+- bytestring
+- cryptonite
+- cereal
+- memory
+- base64-bytestring
+- unordered-containers
+- text
+
+library:
+  source-dirs: src
+
+executables:
+  trailchain-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - trailchain
+
+tests:
+  trailchain-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - trailchain
+    - base-compat
+    - lens
+    - http-types
+    - aeson
+    - lens-aeson
+    - unordered-containers
+    - hspec
+    - QuickCheck
+    
